@@ -1,0 +1,33 @@
+import { emptyState } from './domain.js';
+import { passwordHash } from './auth.js';
+export function seedData(demo=true){
+ const s=emptyState(),now=new Date(),iso=d=>new Date(d).toISOString(),ago=h=>iso(now-h*3600000),future=h=>iso(+now+h*3600000);
+ const r=(kind,id,data,site='plant-1')=>{const x={id,siteId:site,version:1,createdAt:ago(72),...data};s[kind].push(x);return x;};
+ r('sites','plant-1',{name:demo?'Planta Central':'Planta principal',currency:'CLP',timezone:'America/Santiago'});
+ const profiles=[['admin','Administración','admin'],['supervisor','María Arias','supervisor'],['technician','Carlos Rojas','technician'],['tech2','Ana Soto','technician'],['operator','Pedro Díaz','operator'],['warehouse','Bodega Central','warehouse'],['manager','Jefatura','manager']];
+ const accounts=(demo?profiles:[['admin','Administrador','admin']]).map(([id,name,role])=>({id,email:demo?`${id}@fastup.local`:process.env.BOOTSTRAP_EMAIL?.toLowerCase(),passwordHash:passwordHash(demo?'FastUp-Demo-2026!':process.env.BOOTSTRAP_PASSWORD),profile:{name,role,siteIds:['plant-1'],hourlyRate:role==='technician'?18000:0,available:true,specialty:role==='technician'?'Mecánica':'',shift:'Día'}}));
+ if(!demo)return {state:s,accounts};
+ r('assets','line-1',{code:'LIN-001',name:'Línea de producción 1',location:'Nave A',criticality:'Alta',status:'Operativo',parentId:null,brand:'',model:'',serial:'',meter:0,unit:'h',operatingHours:0,operatingSchedule:'Turnos día / noche'});
+ const assets=[['pump','B-014','Bomba centrífuga','Sala de bombas','Alta'],['compressor','C-003','Compresor','Servicios','Alta'],['belt','CT-002','Cinta transportadora','Línea 2','Media'],['motor','M-008','Motor eléctrico','Línea 1','Media'],['fan','V-006','Ventilador','Extracción','Baja']];
+ assets.forEach(([id,code,name,location,criticality],i)=>r('assets',id,{code,name,location,criticality,status:id==='compressor'?'Detenido':'Operativo',parentId:'line-1',brand:'Equipo de demostración',model:'Industrial',serial:`SN-${100+i}`,meter:460+i*20,effectiveMeter:460+i*20,unit:'h',operatingHours:0,operatingSchedule:'Pendiente de validar',manual:''}));
+ r('templates','inspection',{name:'Inspección mecánica',instructions:'Seguir el procedimiento autorizado del equipo.',tasks:[{id:'task-1',label:'Verificar condición general',type:'check',unit:'',min:null,max:null},{id:'task-2',label:'Registrar temperatura',type:'reading',unit:'°C',min:0,max:80}]});
+ const order=(id,code,assetId,title,status,priority,techs,due)=>r('orders',id,{code,assetId,title,status,priority,type:'Correctiva',source:'Aviso',requestIds:[],planId:null,parentOrderId:null,technicianIds:techs,leadId:techs[0]||null,dueAt:due,plannedAt:ago(2),estimatedHours:2,templateId:null,templateVersion:null,tasks:[],checks:[],handover:[],clearanceRequired:false,hazard:'',clearance:null,acceptance:null,createdBy:'supervisor',occurredAt:ago(24)});
+ order('ot-248','OT-0248','pump','Vibración en rodamiento','En proceso','Alta',['technician'],future(5));
+ order('ot-247','OT-0247','compressor','Reemplazo de sello','En espera de repuesto','Alta',['tech2'],ago(3));
+ order('ot-246','OT-0246','belt','Ajuste de tensión','Asignada','Media',['technician'],future(20));
+ order('ot-245','OT-0245','motor','Ruido intermitente','Registrada','Media',[],future(30));
+ order('ot-244','OT-0244','fan','Limpieza y revisión','Asignada','Baja',['tech2'],future(40));
+ r('requests','av-1',{code:'AV-0101',assetId:'pump',description:'Vibración y ruido en bomba durante operación',condition:'Operando con anomalía',requesterId:'operator',status:'Por revisar',orderId:null,occurredAt:ago(1)});
+ r('requests','av-2',{code:'AV-0102',assetId:'pump',description:'Segundo aviso de vibración en la misma bomba',condition:'Operando con anomalía',requesterId:'operator',status:'Por revisar',orderId:null,occurredAt:ago(0.5)});
+ r('parts','bearing',{code:'REP-001',name:'Rodamiento 6205',unit:'un',bin:'A-02',stock:12,minStock:5,cost:18500,currency:'CLP',assetIds:['pump','motor']});
+ r('parts','seal',{code:'REP-002',name:'Sello mecánico',unit:'un',bin:'B-04',stock:1,minStock:3,cost:42000,currency:'CLP',assetIds:['compressor']});
+ r('parts','grease',{code:'REP-003',name:'Grasa multipropósito',unit:'kg',bin:'C-01',stock:8,minStock:2,cost:9500,currency:'CLP',assetIds:[]});
+ r('downtime','stop-1',{assetId:'compressor',startedAt:ago(8),endedAt:null,planned:false,reason:'Fuga en sello',orderIds:['ot-247'],by:'supervisor'});
+ r('plans','pm-1',{name:'Inspección mensual de bomba',assetId:'pump',templateId:'inspection',mode:'fixed',intervalDays:30,intervalMeter:0,nextDue:future(48),nextMeter:null,active:true,horizonDays:7,priority:'Media'});
+ r('plans','pm-2',{name:'Revisión compresor cada 500 h',assetId:'compressor',templateId:'inspection',mode:'floating',intervalDays:0,intervalMeter:500,nextDue:null,nextMeter:500,active:true,horizonDays:0,priority:'Alta'});
+ r('notices','notice-1',{title:'Orden vencida',body:'OT-0247 está en espera de repuesto.',targetRole:'supervisor',orderId:'ot-247',ackBy:[]});
+ r('notices','notice-2',{title:'Stock bajo',body:'REP-002: 1 un disponible; mínimo 3.',targetRole:'warehouse',orderId:null,ackBy:[]});
+ r('resources','tool-1',{category:'tool',name:'Medidor de vibraciones',assetId:null,reference:'HER-001',status:'Activo',holderId:null,note:'',dueAt:future(24*90)});
+ r('resources','cal-1',{category:'calibration',name:'Calibración medidor de vibraciones',assetId:null,reference:'CAL-2026-01',status:'Activo',holderId:null,note:'Conservar certificado en archivo adjunto.',dueAt:future(24*30)});
+ return {state:s,accounts};
+}
