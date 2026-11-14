@@ -1,0 +1,3 @@
+assetCode;legacyOrderCode;technicianEmail;startedAt;endedAt;hours;diagnosis;activity;cause;failureCode;historicalRate
+B-014;EXCEL-2025-001;technician@fastup.local;2025-10-01T08:00:00-03:00;2025-10-01T10:00:00-03:00;2;Desgaste en rodamiento;Reemplazo y prueba;Desgaste;MEC-RODAMIENTO;17000
+C-003;EXCEL-2025-002;tech2@fastup.local;2025-10-02T09:00:00-03:00;2025-10-02T10:00:00-03:00;1;Fuga en sello;Revisión de sello;Por determinar;MEC-SELLO;
